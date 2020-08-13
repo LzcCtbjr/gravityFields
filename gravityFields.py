@@ -16,9 +16,9 @@ def main(framesLeft=-1, output=False):
     random.seed(7)
     numPoints = 100
     x = 500
-    y = 500
+    y = 980
     screenSize = [x, y]
-    stepSize = 0.04
+    stepSize = 0.1
 
     # physics variables
     # interesting parameters:
@@ -28,17 +28,24 @@ def main(framesLeft=-1, output=False):
     buffer = 50
     attractIndex = 1/100
     repelIndex = 1/50
+    constrainIndex = 1/3
 
     # display variables
-    dampeningCoeffA = 0.99
-    dampeningCoeffB = 0.95
-    speedCoeff = 1/20
+    dampeningCoeffA = 0.95
+    dampeningCoeffB = 0.90
+    speedCoeffA = 1/20
+    speedCoeffB = 1/3
 
     # setup list of points
     dots = list(())
     for i in range(numPoints):
+
+        xPos = (x/2) * random.random() + (x * 0.25)
+        yPos = (y/2) * random.random() + (y * 0.25)
+        """
         xPos = x * random.random()
         yPos = y * random.random()
+        """
         xVel = random.random()
         yVel = random.random()
 
@@ -49,18 +56,16 @@ def main(framesLeft=-1, output=False):
     inverse = image
 
     # if outputting to a video, set that up now
-    # TODO: PUT IF CONDITION HERE, AND SET UP COMMAND-LINE
-    #       ARGUMENTS FOR THIS OPTION
-    # frameNum = 0
-    # directory = r'C:\Users\dunna\Documents\Stuff\Python\fields\images'
-    # os.chdir(directory)
-    video = cv2.VideoWriter(
-                        filename='video.avi',
-                        fourcc=cv2.VideoWriter_fourcc(*'DIVX'),
-                        fps=20,
-                        frameSize=(x + 100, (y + 100) * 3)
-                        )
-    print(video)
+    # TODO: SET UP COMMAND-LINE ARGUMENTS FOR THIS OPTION
+
+    if output:
+        video = cv2.VideoWriter(
+                            filename='video.avi',
+                            fourcc=cv2.VideoWriter_fourcc(*'DIVX'),
+                            fps=30,
+                            frameSize=((x + 100) * 3, y + 100)
+        )
+        print(video)
 
     # loop!
     while framesLeft != 0:
@@ -70,7 +75,7 @@ def main(framesLeft=-1, output=False):
 
         for p in dots:
             p.step(stepSize)
-            p.constrain(screenSize)
+            p.constrain(screenSize, constrainIndex)
 
         # code attempting to implement mouse detection
         """
@@ -78,31 +83,37 @@ def main(framesLeft=-1, output=False):
         cv2.setMouseCallback('test string', mousePosition)
         """
 
-        # dotsLen = len(dots)
+        dotsLen = len(dots)
         for i in dots:
             iLoc = i.getLocation()
 
-            # for j in range(dots.index(i), dotsLen):
-            for j in dots:
-                # j = dots[j]
+            for j in range(dots.index(i), dotsLen):
+                # for j in dots:
+                j = dots[j]
                 d = i.getDistance(j)
-                colorScale = (1 - d/150)
+                intensity = 0.75 * (1 - d/150)
+
                 iLoc = i.getLocation()
+                iLoc = [round(iLoc[0]), round(iLoc[1])]
                 jLoc = j.getLocation()
+                jLoc = [round(jLoc[0]), round(jLoc[1])]
 
                 if d < threshold:
-                    cv2.line(points, (iLoc[0], iLoc[1]), (jLoc[0], jLoc[1]), (colorScale, colorScale, colorScale))
+                    cv2.line(points, (iLoc[0], iLoc[1]), (jLoc[0], jLoc[1]), ((intensity, ) * 3))
                     i.repel(j, threshold + buffer, repelIndex)
+
                 elif d > threshold and d < threshold + buffer:
-                    cv2.line(points, (iLoc[0], iLoc[1]), (jLoc[0], jLoc[1]), (colorScale, colorScale, colorScale))
+                    cv2.line(points, (iLoc[0], iLoc[1]), (jLoc[0], jLoc[1]), ((intensity, ) * 3))
                     i.attract(j, threshold + buffer, attractIndex)
 
-            dxIndex = i.xvel * speedCoeff
-            dyIndex = i.yvel * speedCoeff
+            dxIndexA = i.xvel * speedCoeffA
+            dyIndexA = i.yvel * speedCoeffA
+            dxIndexB = i.xvel * speedCoeffB
+            dyIndexB = i.yvel * speedCoeffB
 
-            cv2.circle(image, (iLoc[0], iLoc[1]), 10, (dxIndex, dyIndex, 0), thickness=-1)
+            cv2.circle(image, (iLoc[0], iLoc[1]), 10, (dxIndexA, dyIndexA, 0), thickness=-1)
             cv2.circle(points, (iLoc[0], iLoc[1]), 2, (255, 255, 255))
-            cv2.circle(inverse, (iLoc[0], iLoc[1]), 3, (dyIndex, dxIndex, 255))
+            cv2.circle(inverse, (iLoc[0], iLoc[1]), 3, (dyIndexB, dxIndexB, 255))
 
         # will render raw images if uncommented
         """
@@ -117,30 +128,37 @@ def main(framesLeft=-1, output=False):
         bInverse = cv2.copyMakeBorder(inverse, 50, 50, 50, 50, cv2.BORDER_CONSTANT, None, 0)
 
         # renders padded images
-        cv2.imshow("image", cv2.copyMakeBorder(
-            image, 50, 50, 50, 50, cv2.BORDER_CONSTANT, None, 0)
-            )
-        cv2.imshow("points", cv2.copyMakeBorder(
-            points, 50, 50, 50, 50, cv2.BORDER_CONSTANT, None, 0)
-            )
-        cv2.imshow("inverse", cv2.copyMakeBorder(
-            inverse, 50, 50, 50, 50, cv2.BORDER_CONSTANT, None, 0)
-            )
-
-        # writes images to disk as video
-        # TODO: ADD IF CONDITION HERE
-        # cv2.imwrite('image' + str(frameNum), image)
-        # cv2.imwrite('points.jpg', 255 * points)
-        # video.write(cv2.imread('points.jpg'))
-        # cv2.imwrite('inverse' + str(frameNum), inverse)
+        cv2.imshow("image", bImage)
+        cv2.imshow("points", bPoints)
+        cv2.imshow("inverse", bInverse)
 
         if output:
-            cv2.imwrite('all.jpg', 255 * (np.concatenate((
+
+            # code that works, albeit not quickly
+            cv2.imwrite('all.jpg', 63 * (np.concatenate((
                 bImage,
                 bPoints,
                 bInverse),
-                axis=0)))
+                axis=1)))
+
+            cv2.imshow('all.jpg', (np.concatenate((
+                bImage,
+                bPoints,
+                bInverse),
+                axis=1)))
+
             video.write(cv2.imread('all.jpg'))
+
+            """
+
+            # code that doesn't work for some reason, but is quick i guess
+            video.write(np.concatenate((
+                bImage,
+                bPoints,
+                bInverse),
+                axis=1))
+
+            """
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -148,7 +166,10 @@ def main(framesLeft=-1, output=False):
             framesLeft -= 1
 
     cv2.destroyAllWindows()
-    video.release()
+
+    if output:
+        video.release()
+
     print('Exited successfully')
 
 

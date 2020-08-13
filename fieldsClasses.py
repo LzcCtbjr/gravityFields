@@ -24,9 +24,8 @@ class Dot:
             self.y = round(screenSize[1] - 1)
         """
 
-        # for some reason self.x and self.y are floats without this code
-        self.x = round(self.x % screenSize[0])
-        self.y = round(self.y % screenSize[1])
+        self.x = self.x % screenSize[0]
+        self.y = self.y % screenSize[1]
 
     def getLocation(self):
         return [self.x, self.y]
@@ -34,7 +33,7 @@ class Dot:
     def getDistance(self, p):
         delx = self.x - p.x
         dely = self.y - p.y
-        d = math.sqrt((delx*delx) + (dely*dely))
+        d = math.sqrt((delx*delx) + (dely*dely)) # is there a faster distance metric to use?
         return d
 
     def repel(self, p, t):
@@ -56,26 +55,60 @@ class Particle(Dot):
     def step(self, stepSize=1):
         self.x = self.x + (self.xvel * stepSize)
         self.y = self.y + (self.yvel * stepSize)
-        self.xvel = 9.9*self.xvel/10
-        self.yvel = 9.9*self.yvel/10
+        self.xvel = 9.9 * self.xvel/10
+        self.yvel = 9.9 * self.yvel/10
 
-    # def constrain(self, screenSize):
+    def constrain(self, screenSize, strength=1/100, radius=None):
+        if radius is None:
+            radius = float(max(screenSize)) * 0.05
 
-        # TODO: make this method repel the point from the boundary
-        # of the simulation
+        if self.x < radius or self.x > screenSize[0] - radius:
+            if self.x < radius:
+                distance = self.x
+                scaling = (radius - distance) * strength
+                self.xvel = self.xvel + (scaling * distance)
+            else:
+                distance = screenSize[0] - self.x
+                scaling = (radius - distance) * strength
+                self.xvel = self.xvel - (scaling * distance)
+
+        if self.y < radius or self.y > screenSize[1] - radius:
+            if self.y < radius:
+                distance = self.y
+                scaling = (radius - distance) * strength
+                self.yvel = self.yvel + (scaling * distance)
+            else:
+                distance = screenSize[1] - self.y
+                scaling = (radius - distance) * strength
+                self.yvel = self.yvel - (scaling * distance)
+
+        # just in case a particle is moving too fast to slow down before
+        # hitting a wall
+        self.x = self.x % screenSize[0]
+        self.y = self.y % screenSize[1]
 
     def repel(self, p, radius, strength=1/100):
         scaling = (radius - self.getDistance(p)) * strength
         delx = self.x - p.x
         dely = self.y - p.y
 
-        self.xvel = self.xvel + (scaling * delx/115)
-        self.yvel = self.yvel + (scaling * dely/115)
+        # changes velocity of the self particle
+        self.xvel = self.xvel + (scaling * delx/radius)
+        self.yvel = self.yvel + (scaling * dely/radius)
+
+        # adds that "equal but opposite" force that newton was about
+        p.xvel = p.xvel - (scaling * delx/radius)
+        p.yvel = p.yvel - (scaling * dely/radius)
 
     def attract(self, p, radius, strength=1/100):
         scaling = (radius - self.getDistance(p)) * strength
         delx = self.x - p.x
         dely = self.y - p.y
 
+        # changes velocity of the self particle
         self.xvel = self.xvel - (scaling * delx/radius)
         self.yvel = self.yvel - (scaling * dely/radius)
+
+        # adds the "equal but opposite" force that newton liked
+        p.xvel = p.xvel + (scaling * delx/radius)
+        p.yvel = p.yvel + (scaling * dely/radius)
