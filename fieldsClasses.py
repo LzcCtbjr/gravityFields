@@ -1,12 +1,14 @@
 import math
 
 
+# abstract class
 class Dot:
 
-    def __init__(self, x, y, dx, dy):
+    def __init__(self, x, y, xvel, yvel):
         self.x = x
         self.y = y
 
+    # what to do when a time interval passes
     def step(self, stepSize):
         pass
 
@@ -24,16 +26,19 @@ class Dot:
             self.y = round(screenSize[1] - 1)
         """
 
+        # when outside the bounds, the point "rolls over" back into bounds
         self.x = self.x % screenSize[0]
         self.y = self.y % screenSize[1]
 
+    # returns the location
     def getLocation(self):
         return [self.x, self.y]
 
+    # gets the distance between the points
     def getDistance(self, p):
         delx = self.x - p.x
         dely = self.y - p.y
-        d = math.sqrt((delx*delx) + (dely*dely)) # is there a faster distance metric to use?
+        d = math.sqrt((delx*delx) + (dely*dely))    # this square root is very time expensive, so it would be nice to find something to replace it with
         return d
 
     def repel(self, p, t):
@@ -53,15 +58,20 @@ class Particle(Dot):
         self.type = 0
 
     def step(self, stepSize=1):
+        # updates the position based on velocity and time interval
         self.x = self.x + (self.xvel * stepSize)
         self.y = self.y + (self.yvel * stepSize)
+        # decays the velocity
         self.xvel = 9.9 * self.xvel/10
         self.yvel = 9.9 * self.yvel/10
 
     def constrain(self, screenSize, strength=1/100, radius=None):
+        # this breaks if I put this as a default parameter, and I dont know why :(
         if radius is None:
             radius = float(max(screenSize)) * 0.05
-
+        
+        # this implementation of constrain repels the points from the boundaries
+        # x dimension constraining
         if self.x < radius or self.x > screenSize[0] - radius:
             if self.x < radius:
                 distance = self.x
@@ -82,8 +92,7 @@ class Particle(Dot):
                 scaling = (radius - distance) * strength
                 self.yvel = self.yvel - (scaling * distance)
 
-        # just in case a particle is moving too fast to slow down before
-        # hitting a wall
+        # just in case a particle is moving too fast to slow down before getting within the radius
         self.x = self.x % screenSize[0]
         self.y = self.y % screenSize[1]
 
